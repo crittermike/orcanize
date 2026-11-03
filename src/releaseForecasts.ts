@@ -27,11 +27,19 @@ const MAX_POLLS = 15;
 
 /** Stores the server's cached scope, then polls while it refreshes stale data in the background. */
 async function loadUntilFresh(slug: string, url: string) {
+  const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
+  let retried = false;
   for (let polls = 0; ; polls++) {
     const res = await requestScope(slug, url);
+    if (res.status === 'error' && res.code === 403 && !retried) {
+      // A URL edited moments ago may not be saved to the plan yet.
+      retried = true;
+      await wait(1500);
+      continue;
+    }
     storeScope(slug, url, res);
     if (res.status !== 'ready' || !res.refreshing || polls >= MAX_POLLS) return;
-    await new Promise(resolve => window.setTimeout(resolve, POLL_MS));
+    await wait(POLL_MS);
   }
 }
 
