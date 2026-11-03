@@ -22,8 +22,21 @@ function analysisFor(slug: string, issue: GitHubIssueRef, source: ScopeSource): 
   return analyzeScope(trackingFromHistory(res.history, res.checkedAt, res.refreshError ?? undefined));
 }
 
+const POLL_MS = 4000;
+const MAX_POLLS = 15;
+
+/** Stores the server's cached scope, then polls while it refreshes stale data in the background. */
+async function loadUntilFresh(slug: string, url: string) {
+  for (let polls = 0; ; polls++) {
+    const res = await requestScope(slug, url);
+    storeScope(slug, url, res);
+    if (res.status !== 'ready' || !res.refreshing || polls >= MAX_POLLS) return;
+    await new Promise(resolve => window.setTimeout(resolve, POLL_MS));
+  }
+}
+
 /** Scope for each active project linked to an issue the server can read.
- *  Each issue is requested once per page, and the server answers from its cache.
+ *  Each issue is loaded once per page; the server answers from its cache, and stale entries are polled until refreshed.
  *  `version` changes whenever any scope response is stored, including by the project editor. */
 function useLinkedScope(slug: string, projects: Project[]) {
   const config = useScopeConfig();
@@ -43,7 +56,7 @@ function useLinkedScope(slug: string, projects: Project[]) {
       const key = `${slug}\n${issue.url}`;
       if (source !== 'github' || requested.has(key) || lastScope(slug, issue.url)) continue;
       requested.add(key);
-      requestScope(slug, issue.url).then(res => storeScope(slug, issue.url, res));
+      void loadUntilFresh(slug, issue.url);
     }
   }, [slug, linked]);
 
