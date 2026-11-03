@@ -92,6 +92,7 @@ When adding new non-project assignment types, add a new sentinel ID and update `
 - The server only fetches and caches GitHub's history (`ScopeHistory`). All counting and forecasting runs in the browser through `src/scope.ts`, so demo data and real data share one code path.
 - Scope is measured in points: each issue's `Points` field from any GitHub project board it's on (read by `server/scope.js` in a separate query), defaulting to `DEFAULT_POINTS = 3` via `pointsOf` in `src/scope.ts`. If the token can't read projects, scope still loads and every issue counts as 3, with a warning. Fine-grained tokens need org Projects read access.
 - A milestone's status pill and headline use `targetStatus` from `src/scope.ts`: a forecast that misses its ship date shows Late or At risk instead of a good pace status.
+- The projects list marks a project "Done" when its linked issue is closed as completed (`issueCompleted` in `src/scope.ts`, `useDoneProjects` in `src/releaseForecasts.ts`), using the same cached scope responses as release forecasts.
 - Count completions from each issue's close reason. GitHub's `subIssuesSummary.completed` counts "not planned" closures as completed.
 - `ScopePanel` reports `loading` / `content` / `none` to the project modal. The modal widens only for `content`, or right away while loading if the link names a milestone or this browser saw scope for the issue before (`scope-seen-v1` in `localStorage`); otherwise it shows "Loading scope…" in its header. Selecting a milestone writes `?milestone=<issue number>` to the URL.
 

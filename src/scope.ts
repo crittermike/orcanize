@@ -826,6 +826,12 @@ export type ScopeHistory = {
   pointsReadable?: boolean;
 };
 
+/** Whether the tracked issue is closed as completed. Not planned and duplicate closures aren't done. */
+export function issueCompleted(h: ScopeHistory): boolean {
+  const root = h.issues.find(i => i.id === h.root.id);
+  return root?.state === 'closed' && root.closeReason === 'completed';
+}
+
 /** Changes this close together are one observation, so moving an issue between
  *  milestones reads as a move rather than a removal and a separate addition. */
 const SAME_CHANGE_MS = 60_000;

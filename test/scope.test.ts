@@ -1,7 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_POINTS, netChanges, pointsOf, releaseForecast, targetStatus, type ScopeAnalysis, type ScopeEvent, type ScopeSummary } from '../src/scope.ts';
+import { DEFAULT_POINTS, issueCompleted, netChanges, pointsOf, releaseForecast, targetStatus, type HistoryIssue, type ScopeAnalysis, type ScopeEvent, type ScopeSummary } from '../src/scope.ts';
 import { pointsFrom } from '../server/scope.js';
+
+test('issueCompleted: only a tracked issue closed as completed is done', () => {
+  const history = (root: Partial<HistoryIssue>) => ({
+    fetchedAt: '2026-10-19T00:00:00Z',
+    root: { id: 'R', number: 1 },
+    contextId: 'P',
+    unreadable: 0,
+    issues: [
+      { id: 'P', number: 9, title: 'Parent', url: '', createdAt: '', state: 'closed' as const, closeReason: 'completed' as const, children: ['R'], events: [] },
+      { id: 'R', number: 1, title: 'Epic', url: '', createdAt: '', state: 'open' as const, children: [], events: [], ...root },
+    ],
+  });
+  assert.equal(issueCompleted(history({ state: 'closed', closeReason: 'completed' })), true);
+  assert.equal(issueCompleted(history({ state: 'closed', closeReason: 'not_planned' })), false);
+  assert.equal(issueCompleted(history({})), false);
+});
 
 test('pointsOf defaults to 3 when unset or invalid', () => {
   assert.equal(DEFAULT_POINTS, 3);
