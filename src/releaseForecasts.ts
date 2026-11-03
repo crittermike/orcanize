@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { analyzeScope, releaseForecast, trackingFromHistory, type GitHubIssueRef, type ReleaseForecast, type ScopeAnalysis } from './scope';
+import { analyzeScope, issueCompleted, releaseForecast, trackingFromHistory, type GitHubIssueRef, type ReleaseForecast, type ScopeAnalysis } from './scope';
 import { lastScope, onScopeStored, requestScope, storeScope, useScopeConfig } from './scopeApi';
 import { scopeSourceFor, type ScopeSource } from './ScopePanel';
 import { chosenScenarios, demoScope } from './scopeDemo';
@@ -9,7 +9,7 @@ import type { Project } from './types';
 const hasRelease = (p: Project) =>
   !p.descoped && (!!p.releaseDate || !!p.milestones?.some(m => m.releaseDate && m.url));
 
-/** Issues already requested for the Releases row on this page. */
+/** Issues already requested on this page. */
 const requested = new Set<string>();
 
 function analysisFor(slug: string, issue: GitHubIssueRef, source: ScopeSource): ScopeAnalysis | null {
@@ -22,16 +22,16 @@ function analysisFor(slug: string, issue: GitHubIssueRef, source: ScopeSource): 
   return analyzeScope(trackingFromHistory(res.history, res.checkedAt, res.refreshError ?? undefined));
 }
 
-/** Scope forecasts for release cards, keyed like `ScheduledRelease.key`.
- *  Each linked issue is requested once per page, and the server answers from its cache.
- *  Newer data loaded by the project editor shows up here too. */
-export function useReleaseForecasts(slug: string, projects: Project[]): Map<string, ReleaseForecast> {
+/** Scope for each active project linked to an issue the server can read.
+ *  Each issue is requested once per page, and the server answers from its cache.
+ *  `version` changes whenever any scope response is stored, including by the project editor. */
+function useLinkedScope(slug: string, projects: Project[]) {
   const config = useScopeConfig();
   const [version, setVersion] = useState(0);
   useEffect(() => onScopeStored(() => setVersion(v => v + 1)), []);
 
   const linked = useMemo(
-    () => projects.filter(hasRelease).flatMap(project => {
+    () => projects.filter(p => !p.descoped).flatMap(project => {
       const src = scopeSourceFor(project.url, config);
       return src ? [{ project, ...src }] : [];
     }),
@@ -46,6 +46,29 @@ export function useReleaseForecasts(slug: string, projects: Project[]): Map<stri
       requestScope(slug, issue.url).then(res => storeScope(slug, issue.url, res));
     }
   }, [slug, linked]);
+
+  return { linked, version };
+}
+
+/** Projects whose linked GitHub issue is closed as completed. */
+export function useDoneProjects(slug: string, projects: Project[]): Set<string> {
+  const { linked, version } = useLinkedScope(slug, projects);
+  return useMemo(() => {
+    const done = new Set<string>();
+    for (const { project, issue, source } of linked) {
+      const res = source === 'github' ? lastScope(slug, issue.url) : undefined;
+      if (res?.status === 'ready' && issueCompleted(res.history)) done.add(project.id);
+    }
+    return done;
+    // `version` changes whenever a scope response is stored.
+  }, [slug, linked, version]);
+}
+
+/** Scope forecasts for release cards, keyed like `ScheduledRelease.key`. */
+export function useReleaseForecasts(slug: string, projects: Project[]): Map<string, ReleaseForecast> {
+  const all = useLinkedScope(slug, projects);
+  const { version } = all;
+  const linked = useMemo(() => all.linked.filter(l => hasRelease(l.project)), [all.linked]);
 
   return useMemo(() => {
     const out = new Map<string, ReleaseForecast>();

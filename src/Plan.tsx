@@ -14,7 +14,7 @@ import {
 import { deriveCapacity } from './capacityShared';
 import { ColorPopover, ProjectEditModal } from './ProjectModal';
 import { LoadError, OfflineBanner } from './ConnectionStatus';
-import { useReleaseForecasts } from './releaseForecasts';
+import { useDoneProjects, useReleaseForecasts } from './releaseForecasts';
 import {
   milestoneLabel,
   milestoneOf,
@@ -499,6 +499,7 @@ function PlanView({
     [state.iterations],
   );
   const releaseForecasts = useReleaseForecasts(slug, state.projects);
+  const doneProjectIds = useDoneProjects(slug, state.projects);
   const releasesByWeek = useMemo(
     () => groupReleasesByWeek(state.projects, allWeeks, releaseForecasts),
     [state.projects, allWeeks, releaseForecasts],
@@ -1407,6 +1408,7 @@ function PlanView({
                 moveProjectToIndex={moveProjectToIndex}
                 weeksPerEM={cap.quarter.weeksPerEM}
                 plannedByProject={plannedByProject}
+                doneProjectIds={doneProjectIds}
                 onEdit={editProject}
                 highlightedProjectId={highlightedProjectId}
                 onHoverProject={setHighlightedProjectId}

@@ -658,6 +658,7 @@ export function PrioritizationTable({
   moveProjectToIndex,
   weeksPerEM,
   plannedByProject,
+  doneProjectIds,
   onEdit,
   highlightedProjectId,
   onHoverProject,
@@ -676,6 +677,7 @@ export function PrioritizationTable({
   moveProjectToIndex: (id: ID, targetIndex: number) => void;
   weeksPerEM: number;
   plannedByProject: Record<ID, number>;
+  doneProjectIds?: Set<ID>;
   onEdit: (id: ID) => void;
   highlightedProjectId?: ID | null;
   onHoverProject?: (id: ID | null) => void;
@@ -734,6 +736,7 @@ export function PrioritizationTable({
             isFitLine={showWhatFits && idx === fitMarkerIndex}
             weeksPerEM={weeksPerEM}
             plannedWeeks={plannedByProject[p.id] ?? 0}
+            isDone={doneProjectIds?.has(p.id) ?? false}
             isHighlighted={highlightedProjectId === p.id}
             isDimmed={highlightedProjectId != null && highlightedProjectId !== p.id}
             isBeingDragged={draggingId === p.id}
@@ -779,6 +782,7 @@ function InitiativeRow({
   isFitLine,
   weeksPerEM,
   plannedWeeks,
+  isDone,
   isHighlighted,
   isDimmed,
   isBeingDragged,
@@ -800,6 +804,7 @@ function InitiativeRow({
   isFitLine: boolean;
   weeksPerEM: number;
   plannedWeeks: number;
+  isDone: boolean;
   isHighlighted?: boolean;
   isDimmed?: boolean;
   isBeingDragged?: boolean;
@@ -920,9 +925,14 @@ function InitiativeRow({
             >
               {project.name.slice(0, 1).toUpperCase() || '·'}
             </span>
-            <span className="truncate text-[13.5px] font-medium text-ink-900">
+            <span className={'truncate text-[13.5px] font-medium ' + (isDone ? 'text-ink-500' : 'text-ink-900')}>
               {project.name || <span className="italic text-ink-400">Untitled</span>}
             </span>
+            {isDone && (
+              <span className="shrink-0 text-[11.5px] font-medium text-emerald-600" title="Issue closed as completed">
+                ✓ Done
+              </span>
+            )}
           </button>
         </td>
         <td className="px-2 py-2 align-middle">
